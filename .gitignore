@@ -1,0 +1,31 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+.terraform.lock.hcl.bak
+override.tf
+override.tf.json
+*_override.tf
+
+# Secrets - never commit
+*.tfvars
+!example.tfvars
+.env
+.env.*
+credentials
+*.pem
+*.key
+.aws/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+build/
+*.zip
+
+# OS
+Thumbs.db
+.DS_Store
