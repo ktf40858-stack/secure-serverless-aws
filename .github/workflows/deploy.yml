@@ -59,6 +59,8 @@ jobs:
   plan:
     name: Terraform plan (dev)
     needs: checks
+    # AWS jobs run only once the account exists: set the repository variable AWS_READY=true.
+    if: vars.AWS_READY == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -94,7 +96,7 @@ jobs:
   apply:
     name: Terraform apply (dev)
     needs: plan
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: vars.AWS_READY == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     # The "dev" environment requires a manual approval in GitHub before this job runs.
     environment: dev
