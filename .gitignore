@@ -23,9 +23,14 @@ credentials
 __pycache__/
 *.pyc
 .venv/
+.venv-test/
 build/
 *.zip
 
 # OS
 Thumbs.db
 .DS_Store
+
+# Backend config with the account id
+backend.hcl
+build/

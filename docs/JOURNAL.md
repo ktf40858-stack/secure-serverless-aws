@@ -11,3 +11,13 @@ Dated log of what was really done, used for the README, the CV and interviews.
 - `terraform validate`: OK. Checkov: 44 passed, 0 failed, 4 skipped with written reasons
   (docs/risk-acceptance.md). First scan was 42 passed / 5 failed before fixes.
 - Not deployed yet: waiting for the AWS account.
+- Notes API written (app/api/src/handler.py): strict input validation, no internal errors leaked,
+  security headers, structured logs without note content. 17 unit tests with moto: all pass.
+  Bug caught before running: DynamoDB returns Decimal, json.dumps would have crashed (500 on read).
+- Dev environment Terraform: DynamoDB (PITR, encryption), Lambda (arm64, 128 MB, reserved concurrency 5,
+  X-Ray), HTTP API (throttling 10/20, access logs), invoke permission scoped to this API.
+- Deploy role permissions scoped to notes-dev*. Manual review found a privilege escalation path
+  (pipeline could create an admin role and assume it) that Checkov did not flag: fixed with a
+  permissions boundary (notes-dev-boundary) required on CreateRole/PutRolePolicy.
+- GitHub Actions workflow: tests, fmt, validate, Checkov gate, OIDC plan, apply from main with approval.
+- Checkov: Terraform 113/0 (18 documented skips), workflow 84/0. Threat model STRIDE written.

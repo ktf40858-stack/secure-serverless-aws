@@ -5,7 +5,7 @@ infrastructure as code, a keyless CI/CD pipeline, least-privilege IAM,
 detection, automatic remediation and CIS compliance, then attacked on
 purpose to prove the controls work.
 
-> Status: **Week 1 in progress** (secured account, Terraform base, OIDC pipeline).
+> Status: **code for weeks 1 and 2 written and checked locally, not deployed yet** (waiting for the AWS account).
 > This README only describes what has actually been built.
 
 ## Architecture (target)
@@ -17,6 +17,16 @@ purpose to prove the controls work.
 - CloudTrail, CloudWatch, AWS Config (CIS AWS Foundations)
 - EventBridge -> remediation Lambda -> SNS alert
 - Attack simulation with Stratus Red Team
+
+## Security checks today (local)
+
+| Check | Result |
+|---|---|
+| Unit tests (input validation, error handling, headers) | 17 passed |
+| `terraform validate` (bootstrap + dev) | OK |
+| Checkov, Terraform | 113 passed, 0 failed, 18 skipped with written reasons ([register](docs/risk-acceptance.md)) |
+| Checkov, GitHub Actions workflow | 84 passed, 0 failed |
+| Manual review | 1 privilege escalation found that Checkov missed, fixed with a permissions boundary ([threat model](docs/threat-model.md), E2) |
 
 ## Repository layout
 

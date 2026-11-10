@@ -1,0 +1,125 @@
+name: ci-cd
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Least privilege for the workflow token. id-token is only granted to the AWS jobs.
+permissions:
+  contents: read
+
+concurrency:
+  group: dev-deploy
+  cancel-in-progress: false
+
+env:
+  TF_VERSION: "1.17.0"
+  TF_IN_AUTOMATION: "true"
+  AWS_REGION: us-east-1
+
+jobs:
+  checks:
+    name: Tests and security gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Unit tests
+        run: |
+          pip install -r app/api/requirements-dev.txt
+          pytest -q app/api/tests
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform format
+        run: terraform fmt -check -recursive terraform
+
+      - name: Terraform validate
+        run: |
+          for dir in terraform/bootstrap terraform/envs/dev; do
+            terraform -chdir="$dir" init -backend=false -input=false
+            terraform -chdir="$dir" validate
+          done
+
+      # Any failed Checkov check fails the build: insecure infrastructure never reaches AWS.
+      - name: Checkov (IaC security gate)
+        run: |
+          pip install checkov
+          checkov -d terraform --framework terraform --compact
+
+  plan:
+    name: Terraform plan (dev)
+    needs: checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      # Short-lived credentials through OIDC: no AWS keys are stored in GitHub.
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Plan
+        working-directory: terraform/envs/dev
+        run: |
+          terraform init -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
+          terraform plan -input=false -no-color -out=tfplan
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          # The saved plan points to the Lambda zip, so both travel together to the apply job.
+          path: |
+            terraform/envs/dev/tfplan
+            terraform/envs/dev/build/api.zip
+          retention-days: 1
+
+  apply:
+    name: Terraform apply (dev)
+    needs: plan
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # The "dev" environment requires a manual approval in GitHub before this job runs.
+    environment: dev
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: terraform/envs/dev
+
+      - name: Apply the reviewed plan
+        working-directory: terraform/envs/dev
+        run: |
+          terraform init -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
+          terraform apply -input=false -no-color tfplan
