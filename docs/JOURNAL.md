@@ -21,3 +21,16 @@ Dated log of what was really done, used for the README, the CV and interviews.
   permissions boundary (notes-dev-boundary) required on CreateRole/PutRolePolicy.
 - GitHub Actions workflow: tests, fmt, validate, Checkov gate, OIDC plan, apply from main with approval.
 - Checkov: Terraform 113/0 (18 documented skips), workflow 84/0. Threat model STRIDE written.
+
+## 2026-11-10 - Account secured, bootstrap deployed
+
+- AWS account created (Free plan). Root: MFA (virtual authenticator), no access keys.
+- IAM Identity Center deliberately NOT enabled: it creates an AWS Organization, which moves the
+  account to the paid plan and drops the free-plan credits. Instead: IAM user `kodjo-admin` in an
+  `admins` group (AdministratorAccess), console access with MFA, no access keys.
+- CLI access with `aws login` (short-lived credentials from the console session, auto-refreshed),
+  profile `lab`. No long-term keys on the laptop.
+- `terraform apply` of the bootstrap: 13 resources created (budget 5 USD/month with 80% actual and
+  100% forecast alerts, state bucket, GitHub OIDC provider, deploy role, permissions boundary).
+  Checked with the CLI: public access block all true, versioning Enabled, budget 5.0 MONTHLY.
+- Bootstrap state is local (terraform/bootstrap/terraform.tfstate, git-ignored): keep a backup.
