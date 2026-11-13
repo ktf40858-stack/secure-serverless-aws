@@ -26,3 +26,6 @@ code (`#checkov:skip=`) must have a line here.
 | CKV_AWS_26 (SNS encryption) | secbaseline-security-alerts | Not encrypted | CloudWatch alarms cannot publish to a topic using the AWS managed SNS key; a CMK costs 1 USD/month. Alerts hold no secrets. | Before any production use |
 | CKV_AWS_18 / 144 / 145 / CKV2_AWS_62 | CloudTrail bucket | Same as the state bucket | Same budget reasons; the bucket is locked to CloudTrail of this trail and TLS only. | Before any production use |
 | Alarm threshold | unauthorized-api-calls | 5 in 5 min (CIS says 1) | Terraform refresh produces occasional expected AccessDenied; 5 keeps the alert meaningful. | Revisit after 1 month of data |
+| CIS iam-no-inline-policy-check | 4 roles | Inline policies | One policy per role, managed with the role; managed policies would need iam:CreatePolicy in the pipeline. See docs/cis-score.md. | n/a |
+| CIS s3-bucket-versioning-enabled (MFA Delete) | 3 buckets | Versioning on, MFA Delete off | MFA Delete requires root access keys, which this account never creates. | n/a |
+| CIS s3-bucket-logging-enabled | 3 buckets | No server access logs | CloudTrail data events on the state bucket, management events on all buckets. | Before any production use |

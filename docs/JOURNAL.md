@@ -97,3 +97,17 @@ Dated log of what was really done, used for the README, the CV and interviews.
 - Live test 2: removed Block Public Access from a test bucket -> restored automatically in 18 seconds,
   alert generated with the actor ARN and source IP. The fix itself triggered the rule again and the
   Lambda logged `noop` (no loop). Test bucket deleted afterwards.
+
+## 2026-11-12 - Week 3, part 3: CIS score with AWS Config
+
+- AWS Config + official CIS v1.4 Level 1 conformance pack (26 managed rules + 18 manual checks,
+  template reviewed, no custom code), behind an `enable_config` switch to control cost.
+- Score before: 14/21 automated rules compliant (67 %).
+- Fixes (free): account password policy, EBS encryption by default, MFA-only AWS Support role,
+  IAM Access Analyzer, direct policy removed from the admin user (console default
+  IAMUserChangePassword).
+- Re-evaluation hit LimitExceededException (Config limits concurrent evaluations): re-queued rule by
+  rule until all were accepted.
+- Score after: 18/21 (86 %). The 3 left are accepted with reasons (inline policies by design, MFA
+  Delete needs root keys, server access logs replaced by CloudTrail). Details: docs/cis-score.md.
+- Config switched off after the measurement (fixes kept) to stay inside the budget.
