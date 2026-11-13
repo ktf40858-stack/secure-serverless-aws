@@ -62,3 +62,19 @@ Dated log of what was really done, used for the README, the CV and interviews.
   keys anywhere in GitHub. The CI plan showed one in-place Lambda change: the zip built on Linux has
   a different hash from the one built on Windows (file metadata), the code itself is the same.
   API checked again after the CI apply: 200.
+
+## 2026-11-12 - Week 3, part 1: authentication, ownership, supply chain
+
+- Cognito user pool: admin-only sign-up, 14-char password policy, optional TOTP MFA, user existence
+  errors hidden, 60-minute tokens, revocation enabled. JWT authorizer on all 4 routes.
+- Ownership: table key changed to (owner = Cognito sub, id). Get/Delete use both, list is a Query on
+  the caller's partition, Scan removed from the Lambda role. The handler also refuses any request
+  without a valid `sub` (defence in depth) and never returns the owner. Unit tests: 24 pass.
+- Deploy role: Cognito permissions scoped by tags (ABAC) because pool ARNs contain a random id.
+- All GitHub Actions pinned to full commit SHAs (latest majors, Node 24), Dependabot added.
+- First CI deploy failed on `logs:CreateLogDelivery` (needed to update stage access logs, no
+  resource-level permissions). Least privilege worked as intended: added exactly the log-delivery
+  actions, re-ran, green. The whole week 3 change was deployed by the pipeline, not from the laptop.
+- Live test with two test users (scripts/smoke_test_auth.sh): no token 401, forged token 401, wrong
+  password and unknown user give the same error, Bob cannot read or delete Alice's note (404, note
+  untouched), Alice can. 7/7 PASS.
