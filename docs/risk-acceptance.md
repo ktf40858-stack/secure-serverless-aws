@@ -7,7 +7,7 @@ code (`#checkov:skip=`) must have a line here.
 |---|---|---|---|---|
 | CKV_AWS_145 (KMS CMK) | Terraform state bucket | SSE-S3 (AES256) | A customer managed key costs about 1 USD/month, 20 % of the lab budget. State holds no secrets. | Before any production use |
 | CKV_AWS_144 (cross-region replication) | Terraform state bucket | Not enabled | Versioning plus 90-day retention covers recovery. Replication doubles storage cost. | Before any production use |
-| CKV_AWS_18 (access logging) | Terraform state bucket | Not enabled | Access is audited with CloudTrail S3 data events (week 3). | Week 3 |
+| CKV_AWS_18 (access logging) | Terraform state bucket | Not enabled | Access is audited with CloudTrail S3 data events (built 2026-11-12). | Done |
 | CKV2_AWS_62 (event notifications) | Terraform state bucket | Not enabled | No consumer for state change events. | n/a |
 | CKV_AWS_119 (KMS CMK) | DynamoDB notes table | AWS owned key | Same budget reason; data is demo notes. | Before any production use |
 | CKV_AWS_158 (KMS CMK) | Lambda and API log groups | AWS managed encryption | Same budget reason. | Before any production use |
@@ -21,3 +21,8 @@ code (`#checkov:skip=`) must have a line here.
 | Cognito USER_PASSWORD_AUTH | notes-dev-api-client | Enabled | Lets the lab get tokens from the CLI. The password goes to Cognito over TLS only, never to the API. A real front end would use SRP or the hosted UI with PKCE. | Before any front end |
 | Cognito threat protection | notes-dev-users | Off | Paid feature (per active user). Mitigated: admin-only sign-up, 14-char password policy, user existence errors hidden, 60-min tokens, revocation enabled. | Before any production use |
 | CKV_AWS_111 (write without constraints) | Permissions boundary, X-Ray statement | `*` | X-Ray has no resource-level permissions. | n/a |
+| CKV_AWS_35 (KMS for CloudTrail) | secbaseline-trail | SSE-S3 | Budget (CMK 1 USD/month). Integrity covered by log file validation. | Before any production use |
+| CKV_AWS_252 (SNS per log file) | secbaseline-trail | Not enabled | Alerts come from metric filters and EventBridge, not per file. | n/a |
+| CKV_AWS_26 (SNS encryption) | secbaseline-security-alerts | Not encrypted | CloudWatch alarms cannot publish to a topic using the AWS managed SNS key; a CMK costs 1 USD/month. Alerts hold no secrets. | Before any production use |
+| CKV_AWS_18 / 144 / 145 / CKV2_AWS_62 | CloudTrail bucket | Same as the state bucket | Same budget reasons; the bucket is locked to CloudTrail of this trail and TLS only. | Before any production use |
+| Alarm threshold | unauthorized-api-calls | 5 in 5 min (CIS says 1) | Terraform refresh produces occasional expected AccessDenied; 5 keeps the alert meaningful. | Revisit after 1 month of data |

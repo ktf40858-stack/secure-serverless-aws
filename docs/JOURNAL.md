@@ -78,3 +78,22 @@ Dated log of what was really done, used for the README, the CV and interviews.
 - Live test with two test users (scripts/smoke_test_auth.sh): no token 401, forged token 401, wrong
   password and unknown user give the same error, Bob cannot read or delete Alice's note (404, note
   untouched), Alice can. 7/7 PASS.
+
+## 2026-11-12 - Week 3, part 2: audit trail, alarms, auto-remediation
+
+- New Terraform root `terraform/security` (state key security/), applied by the admin only: the app
+  pipeline has no rights on CloudTrail, EventBridge or SNS (separation of duties). 35 resources.
+- CloudTrail: multi-region, log file validation, dedicated bucket (locked to this trail, TLS only,
+  90 days), copy in CloudWatch Logs, S3 data events on the Terraform state bucket only.
+- Account-level S3 Block Public Access enabled (CIS).
+- SNS topic for security alerts (email). 6 CIS metric filters + alarms (root usage, console login
+  without MFA, 3 failed logins, 5 AccessDenied in 5 min, IAM policy changes, trail changes) and 2
+  Lambda error alarms. 8 alarms total, inside the free tier. Checkov security root: 93 passed, 0 failed.
+- Auto-remediation: EventBridge rule on CloudTrail S3 events -> Lambda (6 unit tests) that reads the
+  real setting, puts all 4 Block Public Access flags back, and sends an SNS alert with actor and IP.
+- Live test 1 FAILED: nothing happened after 8 minutes. CloudTrail showed the event is logged as
+  `DeleteBucketPublicAccessBlock`, while the API call is `DeletePublicAccessBlock`; the rule used the
+  API name. Fixed the rule and the tests with the CloudTrail names.
+- Live test 2: removed Block Public Access from a test bucket -> restored automatically in 18 seconds,
+  alert generated with the actor ARN and source IP. The fix itself triggered the rule again and the
+  Lambda logged `noop` (no loop). Test bucket deleted afterwards.

@@ -36,7 +36,7 @@ jobs:
       - name: Unit tests
         run: |
           pip install -r app/api/requirements-dev.txt
-          pytest -q app/api/tests
+          pytest -q app/api/tests app/remediation/tests
 
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
@@ -47,7 +47,7 @@ jobs:
 
       - name: Terraform validate
         run: |
-          for dir in terraform/bootstrap terraform/envs/dev; do
+          for dir in terraform/bootstrap terraform/envs/dev terraform/security; do
             terraform -chdir="$dir" init -backend=false -input=false
             terraform -chdir="$dir" validate
           done

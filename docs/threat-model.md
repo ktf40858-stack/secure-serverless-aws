@@ -35,7 +35,10 @@ GitHub / AWS account.
 | T3 | Tampering | Terraform state edited or deleted | Versioned bucket, TLS-only policy, public access blocked, 90-day version history | Built |
 | T4 | Tampering | Insecure infrastructure merged into main | Checkov gate fails the build; apply only from main with manual approval (`dev` environment) | Built |
 | R1 | Repudiation | No trace of who called what | API Gateway access logs (request id, IP, route, status) + structured Lambda logs | Built |
-| R2 | Repudiation | No trace of AWS API activity | CloudTrail | Week 3 |
+| R2 | Repudiation | No trace of AWS API activity | Multi-region CloudTrail with log file validation (signed digests), dedicated locked bucket (90 days), copy in CloudWatch Logs, S3 data events on the Terraform state | Built 2026-11-12 |
+| R3 | Repudiation / Tampering | Attacker stops or edits the trail to hide | Alarm on CreateTrail/UpdateTrail/DeleteTrail/StopLogging; security baseline is a separate Terraform root the app pipeline has no rights on | Built 2026-11-12 |
+| I4 | Information disclosure | A bucket is made public (policy, ACL or Block Public Access removed) | Account-level Block Public Access + EventBridge rule on the CloudTrail events -> Lambda puts all 4 flags back and alerts by SNS | Built 2026-11-12, tested live |
+| S5 | Spoofing | Root use, console login without MFA, password guessing, permission probing | CIS metric filters + alarms (root usage, no-MFA login, 3 failed logins, 5 AccessDenied in 5 min, IAM policy changes) to SNS email | Built 2026-11-12 |
 | I1 | Information disclosure | Stack traces or AWS details returned to the caller | Catch-all handler returns `{"error":"internal error"}`, tested | Built |
 | I2 | Information disclosure | Data readable at rest | DynamoDB and S3 encryption (AWS managed keys, KMS CMK out of budget) | Built, risk accepted |
 | I3 | Information disclosure | Note content in logs | Logs record action, status, request id and IP, never the note | Built |
