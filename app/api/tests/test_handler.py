@@ -15,9 +15,16 @@ os.environ["TABLE_NAME"] = "notes-test"
 import handler  # noqa: E402
 
 
-def event(method, body=None, note_id=None, b64=False):
+ALICE = "11111111-1111-4111-8111-111111111111"
+BOB = "22222222-2222-4222-8222-222222222222"
+
+
+def event(method, body=None, note_id=None, b64=False, user=ALICE):
+    ctx = {"http": {"method": method, "sourceIp": "203.0.113.7"}, "requestId": "req-1"}
+    if user is not None:
+        ctx["authorizer"] = {"jwt": {"claims": {"sub": user}, "scopes": None}}
     return {
-        "requestContext": {"http": {"method": method, "sourceIp": "203.0.113.7"}, "requestId": "req-1"},
+        "requestContext": ctx,
         "pathParameters": {"id": note_id} if note_id else None,
         "body": body,
         "isBase64Encoded": b64,
@@ -29,8 +36,14 @@ def table(monkeypatch):
     with mock_aws():
         boto3.resource("dynamodb").create_table(
             TableName="notes-test",
-            KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
-            AttributeDefinitions=[{"AttributeName": "id", "AttributeType": "S"}],
+            KeySchema=[
+                {"AttributeName": "owner", "KeyType": "HASH"},
+                {"AttributeName": "id", "KeyType": "RANGE"},
+            ],
+            AttributeDefinitions=[
+                {"AttributeName": "owner", "AttributeType": "S"},
+                {"AttributeName": "id", "AttributeType": "S"},
+            ],
             BillingMode="PAY_PER_REQUEST",
         )
         handler._table = None
@@ -41,8 +54,8 @@ def call(ev):
     return handler.lambda_handler(ev, None)
 
 
-def create(title="Hello", body="World"):
-    res = call(event("POST", json.dumps({"title": title, "body": body})))
+def create(title="Hello", body="World", user=ALICE):
+    res = call(event("POST", json.dumps({"title": title, "body": body}), user=user))
     return res, json.loads(res["body"])
 
 
@@ -104,3 +117,36 @@ def test_security_headers_present():
     res, _ = create()
     assert res["headers"]["X-Content-Type-Options"] == "nosniff"
     assert res["headers"]["Cache-Control"] == "no-store"
+
+
+# --- Authentication and ownership (threat model S1 / IDOR) ---
+
+@pytest.mark.parametrize("user", [None, "", "not-a-uuid", "../" + ALICE])
+def test_requests_without_valid_identity_are_rejected(user):
+    for ev in (event("GET", user=user), event("POST", json.dumps({"title": "a", "body": "b"}), user=user)):
+        res = call(ev)
+        assert res["statusCode"] == 401
+        assert json.loads(res["body"]) == {"error": "unauthorized"}
+
+
+def test_users_only_see_their_own_notes():
+    create("alice note", user=ALICE)
+    create("bob note", user=BOB)
+    alice = json.loads(call(event("GET", user=ALICE))["body"])["notes"]
+    assert [n["title"] for n in alice] == ["alice note"]
+
+
+def test_no_idor_on_read_and_delete():
+    _, note = create("secret", user=ALICE)
+    # Bob knows the id but gets the same 404 as for a missing note
+    assert call(event("GET", note_id=note["id"], user=BOB))["statusCode"] == 404
+    assert call(event("DELETE", note_id=note["id"], user=BOB))["statusCode"] == 404
+    # Alice's note is untouched
+    assert call(event("GET", note_id=note["id"], user=ALICE))["statusCode"] == 200
+
+
+def test_owner_is_never_returned():
+    res, note = create()
+    assert "owner" not in note
+    assert "owner" not in json.loads(call(event("GET", note_id=note["id"]))["body"])
+    assert all("owner" not in n for n in json.loads(call(event("GET"))["body"])["notes"])

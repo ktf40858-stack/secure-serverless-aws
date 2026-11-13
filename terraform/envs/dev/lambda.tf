@@ -46,7 +46,7 @@ data "aws_iam_policy_document" "api" {
       "dynamodb:GetItem",
       "dynamodb:PutItem",
       "dynamodb:DeleteItem",
-      "dynamodb:Scan",
+      "dynamodb:Query", # list = Query on the caller's partition; Scan is no longer allowed
     ]
     resources = [aws_dynamodb_table.notes.arn]
   }

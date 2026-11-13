@@ -29,6 +29,8 @@ resource "aws_apigatewayv2_stage" "default" {
       method    = "$context.httpMethod"
       route     = "$context.routeKey"
       status    = "$context.status"
+      user      = "$context.authorizer.claims.sub"
+      authError = "$context.authorizer.error"
       latency   = "$context.responseLatency"
       userAgent = "$context.identity.userAgent"
     })
@@ -47,12 +49,14 @@ locals {
   routes = ["GET /notes", "POST /notes", "GET /notes/{id}", "DELETE /notes/{id}"]
 }
 
+# Every route requires a valid Cognito token (threat model S1). No anonymous route exists.
 resource "aws_apigatewayv2_route" "notes" {
-  #checkov:skip=CKV_AWS_309:Public demo API in week 2; a Cognito JWT authorizer is planned (see docs/threat-model.md, S1)
-  for_each  = toset(local.routes)
-  api_id    = aws_apigatewayv2_api.notes.id
-  route_key = each.value
-  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  for_each           = toset(local.routes)
+  api_id             = aws_apigatewayv2_api.notes.id
+  route_key          = each.value
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
 # Only this API (any stage, only the declared routes) may invoke the function.

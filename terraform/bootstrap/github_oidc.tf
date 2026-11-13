@@ -148,6 +148,47 @@ data "aws_iam_policy_document" "github_deploy_app" {
     }
   }
 
+  # Week 3: Cognito. User pool ARNs contain a random id, not the name, so the scope is the tags
+  # (ABAC): the pipeline can only create pools tagged for this project and dev, and can only touch
+  # pools that carry those tags. Pools created by hand in the console stay out of reach.
+  statement {
+    sid       = "CognitoCreateTaggedPool"
+    actions   = ["cognito-idp:CreateUserPool", "cognito-idp:TagResource"]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/Project"
+      values   = ["secure-serverless-aws"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/Environment"
+      values   = ["dev"]
+    }
+  }
+
+  statement {
+    sid = "CognitoManageOwnPools"
+    actions = [
+      "cognito-idp:DescribeUserPool", "cognito-idp:UpdateUserPool", "cognito-idp:DeleteUserPool",
+      "cognito-idp:GetUserPoolMfaConfig", "cognito-idp:SetUserPoolMfaConfig",
+      "cognito-idp:CreateUserPoolClient", "cognito-idp:DescribeUserPoolClient",
+      "cognito-idp:UpdateUserPoolClient", "cognito-idp:DeleteUserPoolClient",
+      "cognito-idp:ListTagsForResource", "cognito-idp:UntagResource",
+    ]
+    resources = ["arn:aws:cognito-idp:${var.region}:${local.acct}:userpool/*"]
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/Project"
+      values   = ["secure-serverless-aws"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/Environment"
+      values   = ["dev"]
+    }
+  }
+
   statement {
     sid       = "ReadIdentity"
     actions   = ["sts:GetCallerIdentity"]

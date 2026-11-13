@@ -7,6 +7,10 @@ Routes (HTTP API payload v2):
     DELETE /notes/{id}     delete one note
 
 Security choices:
+- every route requires a Cognito JWT (checked by API Gateway); the handler reads the caller's
+  `sub` claim and refuses the request if it is missing (defence in depth)
+- notes are partitioned by owner: every read and delete uses the key (owner, id), so a user can
+  never reach another user's note, even with a valid id (no IDOR)
 - strict input validation (types, lengths, allowed keys, body size)
 - no stack traces or internal details in responses
 - structured JSON logs without the note content
@@ -22,6 +26,7 @@ import uuid
 from decimal import Decimal
 
 import boto3
+from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 
 LOG = logging.getLogger()
@@ -33,6 +38,7 @@ MAX_TEXT = 2000
 LIST_LIMIT = 50
 ID_PATTERN = re.compile(r"^[0-9a-f]{32}$")
 ALLOWED_FIELDS = {"title", "body"}
+SUB_PATTERN = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 SECURITY_HEADERS = {
     "Content-Type": "application/json",
@@ -66,11 +72,27 @@ def _response(status, payload):
     }
 
 
+def _owner(event):
+    """Return the caller's Cognito `sub`, or None. Set by the API Gateway JWT authorizer only."""
+    authorizer = event.get("requestContext", {}).get("authorizer") or {}
+    claims = (authorizer.get("jwt") or {}).get("claims") or {}
+    sub = claims.get("sub") if isinstance(claims, dict) else None
+    if isinstance(sub, str) and SUB_PATTERN.match(sub):
+        return sub
+    return None
+
+
+def _public(item):
+    """Never return the owner id to the client."""
+    return {k: v for k, v in item.items() if k != "owner"}
+
+
 def _log(event, status, action):
     ctx = event.get("requestContext", {})
     LOG.info(json.dumps({
         "action": action,
         "status": status,
+        "user": _owner(event),
         "request_id": ctx.get("requestId"),
         "source_ip": ctx.get("http", {}).get("sourceIp"),
     }))
@@ -102,33 +124,43 @@ def _route(event):
     method = event.get("requestContext", {}).get("http", {}).get("method", "")
     note_id = (event.get("pathParameters") or {}).get("id")
 
+    owner = _owner(event)
+    if owner is None:
+        return 401, {"error": "unauthorized"}, "no_identity"
+
     if note_id is not None and not ID_PATTERN.match(note_id):
         return 400, {"error": "invalid id"}, "bad_id"
 
     table = _get_table()
 
     if method == "GET" and note_id is None:
-        items = table.scan(Limit=LIST_LIMIT).get("Items", [])
-        return 200, {"notes": items}, "list"
+        items = table.query(
+            KeyConditionExpression=Key("owner").eq(owner), Limit=LIST_LIMIT
+        ).get("Items", [])
+        return 200, {"notes": [_public(i) for i in items]}, "list"
 
     if method == "POST" and note_id is None:
         note, error = _parse_note(event)
         if error:
             return 400, {"error": error}, "create_rejected"
+        note["owner"] = owner
         note["id"] = uuid.uuid4().hex
         note["created_at"] = int(time.time())
         table.put_item(Item=note, ConditionExpression="attribute_not_exists(id)")
-        return 201, note, "create"
+        return 201, _public(note), "create"
 
     if method == "GET":
-        item = table.get_item(Key={"id": note_id}).get("Item")
+        # Another user's note gives the same 404 as a missing one: no existence oracle.
+        item = table.get_item(Key={"owner": owner, "id": note_id}).get("Item")
         if not item:
             return 404, {"error": "not found"}, "read_missing"
-        return 200, item, "read"
+        return 200, _public(item), "read"
 
     if method == "DELETE" and note_id is not None:
         try:
-            table.delete_item(Key={"id": note_id}, ConditionExpression="attribute_exists(id)")
+            table.delete_item(
+                Key={"owner": owner, "id": note_id}, ConditionExpression="attribute_exists(id)"
+            )
         except ClientError as err:
             if err.response["Error"]["Code"] == "ConditionalCheckFailedException":
                 return 404, {"error": "not found"}, "delete_missing"
