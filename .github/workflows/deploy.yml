@@ -60,7 +60,8 @@ jobs:
     name: Terraform plan (dev)
     needs: checks
     # AWS jobs run only once the account exists: set the repository variable AWS_READY=true.
-    if: vars.AWS_READY == 'true'
+    # Push to main only: the deploy role does not trust pull_request tokens (see github_oidc.tf).
+    if: vars.AWS_READY == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read

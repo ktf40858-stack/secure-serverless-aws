@@ -34,3 +34,22 @@ Dated log of what was really done, used for the README, the CV and interviews.
   100% forecast alerts, state bucket, GitHub OIDC provider, deploy role, permissions boundary).
   Checked with the CLI: public access block all true, versioning Enabled, budget 5.0 MONTHLY.
 - Bootstrap state is local (terraform/bootstrap/terraform.tfstate, git-ignored): keep a backup.
+
+## 2026-11-12 - Dev environment deployed
+
+- Bootstrap state backed up outside the repo. `backend.hcl` (git-ignored) points the dev env to the
+  remote S3 state bucket with native locking.
+- Pre-apply check found a blocker: new accounts have a Lambda concurrency quota of 10, and AWS refuses
+  any reservation that leaves fewer than 10 unreserved, so `reserved_concurrent_executions = 5` would
+  have failed. Set to -1 (documented in variables.tf); the cap comes from the account quota (10) and
+  API Gateway throttling (10 rps, burst 20). To restore to 5 once the quota is raised.
+- `terraform apply` dev: 14 resources (HTTP API, 4 routes, Lambda, DynamoDB, IAM role, 2 log groups).
+  Checkov dev: 44 passed, 0 failed.
+- Live tests against the deployed API: POST 201, list 200, get 200, delete 204, get after delete 404,
+  unexpected field rejected 400, unknown route 404. Security headers present (HSTS, nosniff,
+  no-store). Lambda logs are structured JSON with no note content.
+- Review of the pipeline before enabling it found a second blocker: the apply job runs in the GitHub
+  environment "dev", so its OIDC `sub` claim is `repo:...:environment:dev`, not the branch. The trust
+  policy only allowed `ref:refs/heads/main`, so the apply job would have been denied. Fixed: trust now
+  lists exactly the two contexts (main branch, dev environment); pull_request tokens stay untrusted and
+  the plan job now runs only on push to main.

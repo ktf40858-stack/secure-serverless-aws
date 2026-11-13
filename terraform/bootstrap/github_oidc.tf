@@ -19,11 +19,18 @@ data "aws_iam_policy_document" "github_trust" {
       values   = ["sts.amazonaws.com"]
     }
 
-    # Only the main branch of this one repository can assume the role.
+    # Only this one repository can assume the role, from two exact contexts:
+    # - the plan job on a push to main (sub = ...:ref:refs/heads/main)
+    # - the apply job, which runs in the "dev" GitHub environment (sub = ...:environment:dev).
+    #   A job that declares an environment gets the environment in its sub claim, not the branch.
+    # Pull requests (sub = ...:pull_request) are deliberately NOT trusted.
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:ref:refs/heads/main"]
+      values = [
+        "repo:${var.github_repo}:ref:refs/heads/main",
+        "repo:${var.github_repo}:environment:dev",
+      ]
     }
   }
 }

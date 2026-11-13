@@ -11,9 +11,15 @@ variable "log_retention_days" {
 }
 
 variable "lambda_reserved_concurrency" {
-  description = "Hard cap on concurrent Lambda executions (cost and abuse guardrail)"
+  description = <<-EOT
+    Hard cap on concurrent Lambda executions (cost and abuse guardrail).
+    -1 = no reservation. New AWS accounts have a total concurrency quota of 10 and AWS refuses
+    any reservation that leaves fewer than 10 unreserved, so -1 is the only value that works
+    until the quota is raised. The cap then comes from the account quota (10) and the API
+    Gateway throttling (api_rate_limit / api_burst_limit). Set to 5 once the quota is 1000.
+  EOT
   type        = number
-  default     = 5
+  default     = -1
 }
 
 variable "api_rate_limit" {
