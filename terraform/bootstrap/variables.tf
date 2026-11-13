@@ -20,3 +20,14 @@ variable "github_repo" {
   type        = string
   default     = "ktf40858-stack/secure-serverless-aws"
 }
+
+variable "github_oidc_subject_repo" {
+  description = <<-EOT
+    Repository part of the GitHub OIDC `sub` claim. This repository uses GitHub's immutable subject
+    format, owner@owner_id/name@repo_id, so a deleted-then-recreated or renamed repo with the same
+    name cannot reuse the trust. Read it with:
+    gh api repos/OWNER/REPO/actions/oidc/customization/sub  (field sub_claim_prefix, without "repo:")
+  EOT
+  type        = string
+  default     = "ktf40858-stack@228718303/secure-serverless-aws@1452096294"
+}

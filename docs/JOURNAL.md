@@ -53,3 +53,12 @@ Dated log of what was really done, used for the README, the CV and interviews.
   policy only allowed `ref:refs/heads/main`, so the apply job would have been denied. Fixed: trust now
   lists exactly the two contexts (main branch, dev environment); pull_request tokens stay untrusted and
   the plan job now runs only on push to main.
+- First pipeline run with AWS enabled: the plan job was denied (`Not authorized to perform
+  sts:AssumeRoleWithWebIdentity`). CloudTrail showed the real `sub` claim: this repository uses
+  GitHub's immutable subject format `repo:owner@owner_id/name@repo_id:...`, not `repo:owner/name:...`.
+  Trust policy updated to the immutable form (variable `github_oidc_subject_repo`); this is also
+  stronger, since a renamed or recreated repo with the same name cannot reuse the trust.
+- Re-run: tests and Checkov gate green, plan via OIDC green, apply from main green. No long-term AWS
+  keys anywhere in GitHub. The CI plan showed one in-place Lambda change: the zip built on Linux has
+  a different hash from the one built on Windows (file metadata), the code itself is the same.
+  API checked again after the CI apply: 200.

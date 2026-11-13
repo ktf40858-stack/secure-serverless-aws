@@ -19,7 +19,7 @@ data "aws_iam_policy_document" "github_trust" {
       values   = ["sts.amazonaws.com"]
     }
 
-    # Only this one repository can assume the role, from two exact contexts:
+    # Only this one repository (immutable owner/repo ids) can assume the role, from two exact contexts:
     # - the plan job on a push to main (sub = ...:ref:refs/heads/main)
     # - the apply job, which runs in the "dev" GitHub environment (sub = ...:environment:dev).
     #   A job that declares an environment gets the environment in its sub claim, not the branch.
@@ -28,8 +28,8 @@ data "aws_iam_policy_document" "github_trust" {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
       values = [
-        "repo:${var.github_repo}:ref:refs/heads/main",
-        "repo:${var.github_repo}:environment:dev",
+        "repo:${var.github_oidc_subject_repo}:ref:refs/heads/main",
+        "repo:${var.github_oidc_subject_repo}:environment:dev",
       ]
     }
   }
