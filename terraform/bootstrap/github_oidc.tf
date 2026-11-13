@@ -99,6 +99,20 @@ data "aws_iam_policy_document" "github_deploy_app" {
     resources = ["*"]
   }
 
+  # Needed by API Gateway to (re)configure stage access logs. These log-delivery actions have no
+  # resource-level permissions, so "*" is the only option (found by a real AccessDenied in CI).
+  statement {
+    #checkov:skip=CKV_AWS_111:log delivery actions do not support resource-level permissions
+    #checkov:skip=CKV_AWS_356:log delivery actions do not support resource-level permissions
+    sid = "ApiGatewayAccessLogDelivery"
+    actions = [
+      "logs:CreateLogDelivery", "logs:GetLogDelivery", "logs:UpdateLogDelivery",
+      "logs:DeleteLogDelivery", "logs:ListLogDeliveries",
+      "logs:PutResourcePolicy", "logs:DescribeResourcePolicies",
+    ]
+    resources = ["*"]
+  }
+
   statement {
     sid       = "HttpApi"
     actions   = ["apigateway:GET", "apigateway:POST", "apigateway:PUT", "apigateway:PATCH", "apigateway:DELETE", "apigateway:TagResource"]
