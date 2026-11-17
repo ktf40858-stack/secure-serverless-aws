@@ -80,11 +80,18 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+          # Public repository: keep the account ID out of the job logs.
+          mask-aws-account-id: true
 
       - name: Plan
         working-directory: terraform/envs/dev
         run: |
           terraform init -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
+          # Public logs: mask the live resource identifiers before Terraform prints them.
+          for o in api_url user_pool_id user_pool_client_id; do
+            v=$(terraform output -raw "$o" 2>/dev/null || true)
+            if [ -n "$v" ]; then echo "::add-mask::$v"; h=${v#https://}; echo "::add-mask::${h%%.*}"; fi
+          done
           terraform plan -input=false -no-color -out=tfplan
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -106,6 +113,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      actions: write # only to delete the plan artifact once applied
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -117,6 +125,8 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+          # Public repository: keep the account ID out of the job logs.
+          mask-aws-account-id: true
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -127,4 +137,20 @@ jobs:
         working-directory: terraform/envs/dev
         run: |
           terraform init -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
+          # Public logs: mask the live resource identifiers before Terraform prints them.
+          for o in api_url user_pool_id user_pool_client_id; do
+            v=$(terraform output -raw "$o" 2>/dev/null || true)
+            if [ -n "$v" ]; then echo "::add-mask::$v"; h=${v#https://}; echo "::add-mask::${h%%.*}"; fi
+          done
           terraform apply -input=false -no-color tfplan
+
+      # The saved plan contains resource ARNs; on a public repository anyone signed in to GitHub can
+      # download artifacts, so it is deleted as soon as the apply job is done with it.
+      - name: Delete the plan artifact
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for id in $(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" --jq '.artifacts[].id'); do
+            gh api -X DELETE "repos/${{ github.repository }}/actions/artifacts/$id"
+          done
