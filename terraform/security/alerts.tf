@@ -1,4 +1,4 @@
-# Alert channel + CIS-style alarms on the CloudTrail log group (8 alarms, inside the 10 free ones).
+# Alert channel + CIS-style alarms on the CloudTrail log group (9 alarms, inside the 10 free ones).
 
 resource "aws_sns_topic" "alerts" {
   #checkov:skip=CKV_AWS_26:CloudWatch alarms cannot publish to a topic encrypted with the AWS managed SNS key, and a CMK costs 1 USD/month; alerts carry no secrets
@@ -43,6 +43,14 @@ locals {
       pattern     = "{ ($.eventName = CreateTrail) || ($.eventName = UpdateTrail) || ($.eventName = DeleteTrail) || ($.eventName = StartLogging) || ($.eventName = StopLogging) || ($.eventName = PutEventSelectors) }"
       threshold   = 1
       description = "CIS: the audit trail was changed or stopped (classic first step of an attacker)."
+    }
+    s3-bucket-policy-changes = {
+      # Added in week 4: Stratus Red Team (s3-backdoor-bucket-policy) granted read access to an external
+      # account through a bucket policy. That is not "public", so the S3 auto-remediation did nothing,
+      # and IAM Access Analyzer raised no finding after 35 minutes. This CIS 4.8 alarm catches it.
+      pattern     = "{ ($.eventSource = s3.amazonaws.com) && (($.eventName = PutBucketPolicy) || ($.eventName = DeleteBucketPolicy) || ($.eventName = PutBucketAcl) || ($.eventName = PutBucketCors) || ($.eventName = PutBucketLifecycle) || ($.eventName = PutBucketReplication) || ($.eventName = DeleteBucketCors) || ($.eventName = DeleteBucketLifecycle) || ($.eventName = DeleteBucketReplication)) }"
+      threshold   = 1
+      description = "CIS: an S3 bucket policy or ACL changed (possible backdoor to an external account). Expected during deploys, suspicious otherwise."
     }
   }
 }

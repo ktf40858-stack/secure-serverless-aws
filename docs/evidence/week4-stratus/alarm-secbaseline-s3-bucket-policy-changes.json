@@ -1,0 +1,14 @@
+[
+    {
+        "time": "2026-11-16T21:09:05.990000-05:00",
+        "summary": "Alarm updated from OK to ALARM"
+    },
+    {
+        "time": "2026-11-16T21:06:05.992000-05:00",
+        "summary": "Alarm updated from ALARM to OK"
+    },
+    {
+        "time": "2026-11-16T20:59:05.989000-05:00",
+        "summary": "Alarm updated from INSUFFICIENT_DATA to ALARM"
+    }
+]

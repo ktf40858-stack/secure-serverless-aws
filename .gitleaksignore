@@ -1,0 +1,2 @@
+# Deliberately forged, unsigned JWT ({"alg":"none"} / {"sub":"x"}) used to prove the API rejects it. Not a secret.
+4798f94ce3f1ebf1a715767741a5101bdd3a40b9:scripts/smoke_test_auth.sh:curl-auth-header:10

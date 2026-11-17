@@ -1,0 +1,63 @@
+[
+ {
+  "time": "2026-11-16T19:59:07-05:00",
+  "event": "CreateUser",
+  "resources": [
+   "arn:aws:iam::111122223333:user/malicious-iam-user",
+   "malicious-iam-user",
+   "AIDA-REDACTED"
+  ]
+ },
+ {
+  "time": "2026-11-16T19:59:08-05:00",
+  "event": "AttachUserPolicy",
+  "resources": [
+   "malicious-iam-user",
+   "arn:aws:iam::aws:policy/AdministratorAccess"
+  ]
+ },
+ {
+  "time": "2026-11-16T19:59:09-05:00",
+  "event": "CreateAccessKey",
+  "resources": [
+   "AKIA-REDACTED-key-deleted",
+   "malicious-iam-user"
+  ]
+ },
+ {
+  "time": "2026-11-16T20:00:01-05:00",
+  "event": "PutBucketPolicy",
+  "resources": [
+   "stratus-red-team-ct-stop-8ba22187-bucket"
+  ]
+ },
+ {
+  "time": "2026-11-16T20:00:21-05:00",
+  "event": "StopLogging",
+  "resources": [
+   "stratus-red-team-ct-stop-8ba22187-trail"
+  ]
+ },
+ {
+  "time": "2026-11-16T20:00:49-05:00",
+  "event": "PutBucketPolicy",
+  "resources": [
+   "stratus-red-team-ctes-a34eebd4-bucket"
+  ]
+ },
+ {
+  "time": "2026-11-16T20:01:12-05:00",
+  "event": "PutEventSelectors",
+  "resources": [
+   "stratus-red-team-ctes-a34eebd4-trail",
+   "arn:aws:cloudtrail:us-east-1:111122223333:trail/stratus-red-team-ctes-a34eebd4-trail"
+  ]
+ },
+ {
+  "time": "2026-11-16T20:01:55-05:00",
+  "event": "PutBucketPolicy",
+  "resources": [
+   "stratus-red-team-bdbp-2728e21a"
+  ]
+ }
+]

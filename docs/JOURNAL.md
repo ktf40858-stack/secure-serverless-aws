@@ -111,3 +111,23 @@ Dated log of what was really done, used for the README, the CV and interviews.
 - Score after: 18/21 (86 %). The 3 left are accepted with reasons (inline policies by design, MFA
   Delete needs root keys, server access logs replaced by CloudTrail). Details: docs/cis-score.md.
 - Config switched off after the measurement (fixes kept) to stay inside the budget.
+
+## 2026-11-17 - Week 4: attack simulation with Stratus Red Team
+
+- Stratus Red Team v2.37.2 and gitleaks 8.30.1 installed from the official GitHub releases,
+  SHA-256 checked. Stratus does not support the `aws login` session provider yet: ran it with
+  temporary credentials exported by `aws configure export-credentials`.
+- SNS email subscription had expired (unconfirmed for more than 3 days); recreated with Terraform.
+- 4 techniques run on the live account. Trail stopped and event selectors: alarm in ~80 s. Hidden
+  admin user with access key: IAM alarm in ~3 min, user removed right away.
+- Gap: bucket policy backdoor to an external account was not detected. The remediation Lambda
+  saw it and did nothing (not public, by design); no alarm matched.
+- First fix (Access Analyzer findings -> EventBridge -> SNS) tested live: the analyzer scanned the
+  bucket but raised no finding in 35 minutes. Kept as an extra layer, not counted as the fix.
+- Second fix: CIS 4.8 alarm on bucket policy/ACL changes (9 alarms). First re-test was ambiguous
+  (Stratus setup tripped the alarm 3 s before the backdoor), so redone cleanly from an OK state:
+  detected in ~67 s.
+- Everything cleaned up (no Stratus bucket, user or trail left). Evidence with account ID redacted
+  in docs/evidence/week4-stratus. Runbooks for every alert in docs/runbooks. README rewritten.
+- gitleaks on the full history: one finding, the deliberately forged unsigned JWT in the auth smoke
+  test, documented in `.gitleaksignore`.

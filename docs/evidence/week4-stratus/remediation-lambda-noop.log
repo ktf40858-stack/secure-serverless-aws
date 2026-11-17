@@ -1,0 +1,4 @@
+2026-11-17T01:00:10 [INFO]	2026-11-17T01:00:10.464Z	a58601fa-dcc7-413c-965c-3fc332a3170e	{"action": "noop", "target": "bucket:stratus-red-team-ct-stop-8ba22187-bucket", "event": "PutBucketPolicy"}
+2026-11-17T01:00:59 [INFO]	2026-11-17T01:00:59.664Z	8cf2ad6c-b45b-4a23-8679-855d2419aaaa	{"action": "noop", "target": "bucket:stratus-red-team-ctes-a34eebd4-bucket", "event": "PutBucketPolicy"}
+2026-11-17T01:02:02 [INFO]	2026-11-17T01:02:02.802Z	b985a600-b06d-4d4b-bb7b-723ed960f3ba	{"action": "noop", "target": "bucket:stratus-red-team-bdbp-2728e21a", "event": "PutBucketPolicy"}
+2026-11-17T01:10:03 [INFO]	2026-11-17T01:10:03.032Z	5bd810bd-5cd8-4009-bc77-238a2ca8b886	{"action": "noop", "target": "bucket:stratus-red-team-bdbp-173476ae", "event": "PutBucketPolicy"}
